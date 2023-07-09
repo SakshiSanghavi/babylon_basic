@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Babylon basic</title>
+    <style>
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script>
+
+        window.addEventListener("DOMContentLoaded", function () {
+            var canvas = document.getElementById("renderCanvas");
+            var engine = new BABYLON.Engine(canvas, true);
+            var scene = new BABYLON.Scene(engine);
+
+            // Setting the camera 
+            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 15, new BABYLON.Vector3(0, 0, 0));
+            camera.attachControl(canvas, true); // To automatically handle inputs
+
+            var light = new BABYLON.HemisphericLight(
+                "light",
+                new BABYLON.Vector3(0, 1, 0),
+                scene
+            );
+
+            // Creating a material and setting its color
+            var matPurple = new BABYLON.StandardMaterial("mat", scene);
+            matPurple.diffuseColor = new BABYLON.Color3(1, 0, 1);
+
+            // Create a cube mesh
+            var scaleCube = BABYLON.MeshBuilder.CreateBox("scaleCube", { size: 1, updatable: true }, scene);
+            scaleCube.position = new BABYLON.Vector3(1, 1, 0); // Setting the position of cube
+            scaleCube.material = matPurple   // Setting the color of cube material
+
+
+            // Create a cube mesh
+            var colorCube = BABYLON.MeshBuilder.CreateBox("colorCube", { size: 1, updatable: true }, scene);
+            colorCube.position = new BABYLON.Vector3(-1, -1, 0);
+
+            var indices = colorCube.getIndices();    // Retrieve indices of cube vertices
+            var positions = colorCube.getVerticesData(BABYLON.VertexBuffer.PositionKind);    // Retrieve position of cube vertices
+            var colors = colorCube.getVerticesData(BABYLON.VertexBuffer.ColorKind);  // Retrieve colour associated with cube vertices
+            var nVertices = positions.length / 3;  // Calculting total number of vertices in the cube
+
+            // If color of cube vertices is 0, then setting the values to solid 1
+            if (!colors) {
+                var colors = new Array(4 * nVertices);  // Array size is 4*nVertices because 4 values for colour, i.e. R G B A
+                colors = colors.fill(1);
+            }
+
+            // Adding action to handle the onPickTrigger event of the cube
+            colorCube.actionManager = new BABYLON.ActionManager(scene);
+            colorCube.actionManager.registerAction(
+                new BABYLON.ExecuteCodeAction(
+                    BABYLON.ActionManager.OnPickTrigger,
+                    function (ev) {
+                        var face = (ev.additionalData.faceId) / 2;
+                        var facet = 2 * Math.floor(face);   // Calculate the starting vertex index for the face
+
+                        // Define a new color based on the face index
+                        var clr = new BABYLON.Color4((face + 1) / 6, (6 - face) / 6, 0, 1);
+
+                        var vertex;
+                        for (var i = 0; i < 6; i++) {
+                            vertex = indices[3 * facet + i];    // // Retrieve the vertex index for the current face
+
+                            // Set the color values for the vertex based on the face color
+                            colors[4 * vertex] = clr.r;
+                            colors[4 * vertex + 1] = clr.g;
+                            colors[4 * vertex + 2] = clr.b;
+                            colors[4 * vertex + 3] = clr.a;
+                        }
+                        colorCube.setVerticesData(BABYLON.VertexBuffer.ColorKind, colors);   // Update the vertex colors of the cube
+                        // }
+                    }
+                )
+            );
+
+            // Adding action to handle the onPickTrigger event of the cube
+            scaleCube.actionManager = new BABYLON.ActionManager(scene);
+            scaleCube.actionManager.registerAction(
+                new BABYLON.ExecuteCodeAction(
+                    BABYLON.ActionManager.OnPickTrigger,
+                    function (event) {
+                        var faceId = Math.floor((event.additionalData.faceId) / 2);   // Calculating the faceId of the selected face from event details
+
+                        // If faceId is of z-axis, increasing the scale of z-axis
+                        // Similarly for x and y axis
+                        if (faceId == 1 || faceId == 0) {
+                            scaleCube.scaling.z += 0.5
+                        } else if (faceId == 3 || faceId == 2) {
+                            scaleCube.scaling.x += 0.5
+                        } else if (faceId == 5 || faceId == 4) {
+                            scaleCube.scaling.y += 0.5
+                        }
+                    }
+                )
+            );
+
+            // Render loop
+            engine.runRenderLoop(function () {
+                scene.render();
+            });
+        });
+    </script>
+</body>
+
+</html>
