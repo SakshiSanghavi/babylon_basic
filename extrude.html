@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Babylon basic</title>
+    <style>
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script>
+
+        window.addEventListener("DOMContentLoaded", function () {
+            var canvas = document.getElementById("renderCanvas");
+            var engine = new BABYLON.Engine(canvas, true);
+            var scene = new BABYLON.Scene(engine);
+
+            // Setting the camera 
+            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 15, new BABYLON.Vector3(0, 0, 0));
+            camera.attachControl(canvas, true); // To automatically handle inputs
+
+            var light = new BABYLON.HemisphericLight(
+                "light",
+                new BABYLON.Vector3(0, 1, 0),
+                scene
+            );
+
+            function getAxisOfFace(face) {
+                var xAbs = Math.abs(face.x);
+                var yAbs = Math.abs(face.y);
+                var zAbs = Math.abs(face.z);
+
+                if (xAbs > yAbs && xAbs > zAbs) {
+                    return "x";
+                } else if (yAbs > xAbs && yAbs > zAbs) {
+                    return "y";
+                } else {
+                    return "z";
+                }
+            }
+
+            // Create a cube mesh
+            var cube = BABYLON.MeshBuilder.CreateBox("cube", { size: 1, updatable: true }, scene);
+
+            var initialMouseX, initialMouseY, selectedAxis, selectedFacePosition;
+
+            scene.onPointerDown = function (evt, pickResult) {
+                console.log("down")
+                if (pickResult.hit) {
+                    var faceId = pickResult.faceId;
+                    var pickedFace = cube.getFacetPosition(faceId);
+                    var axis = getAxisOfFace(pickedFace);
+                    console.log(pickedFace,axis)
+                    // Store the initial mouse position and axis information
+                    initialMouseX = evt.clientX;
+                    initialMouseY = evt.clientY;
+                    selectedAxis = axis;
+
+                    // Store the position of the selected face
+                    selectedFacePosition = new BABYLON.Vector3(
+                        pickedFace.x,
+                        pickedFace.y,
+                        pickedFace.z
+                    );
+
+                    // console.log("selected face:" , selectedFacePosition)
+                }
+            };
+
+            scene.onPointerMove = function (evt) {
+                // console.log("move")
+                if (initialMouseX !== undefined && initialMouseY !== undefined) {
+
+                    // Calculate the displacement along the selected axis
+                    var displacement;
+                    if (selectedAxis === "x") {
+                        displacement = (evt.clientX - initialMouseX) * 0.01;
+                    } else if (selectedAxis === "y") {
+                        displacement = (evt.clientY - initialMouseY) * -0.01;
+                    } else if (selectedAxis === "z") {  // Z axis displacement, 
+                        displacement = (evt.clientX - initialMouseX) * 0.01;
+                    }
+
+                    // Update vertex positions based on the displacement
+                    var vertices = cube.getVerticesData(BABYLON.VertexBuffer.PositionKind);
+                    for (var i = 0; i < vertices.length; i += 3) {
+                        var vertex = new BABYLON.Vector3(
+                            vertices[i],
+                            vertices[i + 1],
+                            vertices[i + 2]
+                            );
+                            
+                        // console.log(vertex)
+                        
+                        // Need to calculate the face and axis and update the vertices
+                        
+                        vertices[i] = vertex.x;
+                        vertices[i + 1] = vertex.y;
+                        vertices[i + 2] = vertex.z;
+                    }
+
+                    // Update the vertex data of the cube
+                    cube.updateVerticesData(BABYLON.VertexBuffer.PositionKind, vertices);
+                }
+            };
+
+            scene.onPointerUp = function () {
+                console.log("up")
+                initialMouseX = undefined;
+                initialMouseY = undefined;
+                selectedAxis = undefined;
+                selectedFacePosition = undefined
+            };
+
+
+
+            // Render loop
+            engine.runRenderLoop(function () {
+                scene.render();
+            });
+        });
+    </script>
+</body>
+
+</html>
